@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
+#include "comm.h"
 #include "list.h"
 #include "net.h"
 #define MAX_IF_NAME_SIZE (32)
@@ -12,11 +13,14 @@
 struct link;
 struct node;
 
+#define COMM_INTF(comm_ptr) container_of(comm_ptr, struct intf, comm)
+
 struct intf {
     char name[MAX_IF_NAME_SIZE + 1];
     struct node *node;
     struct link *link;
     struct intf_nw_prop intf_nw_prop;
+    struct comm comm;
 };
 
 struct link {
@@ -53,14 +57,21 @@ void insert_link_between_two_nodes(struct node *node1,
 
 void destroy_link(struct link *link);
 
+void destroy_interface(struct intf *intf);
+
 void dump_nw_graph(struct graph *graph);
 
-static inline struct node *get_nbr_node(struct intf *intf) {
+static inline struct intf *get_nbr_if(struct intf *intf) {
     if (!intf->link)
         return NULL;
-    if (intf != &intf->link->intf1)
-        return intf->link->intf1.node;
-    return intf->link->intf2.node;
+    return intf == &intf->link->intf1 ? &intf->link->intf2 : &intf->link->intf1;
+}
+
+static inline struct node *get_nbr_node(struct intf *intf) {
+    struct intf *nbr_intf = get_nbr_if(intf);
+    if (nbr_intf)
+        return nbr_intf->node;
+    return NULL;
 }
 
 static inline int get_node_intf_available_slot(struct node *node)

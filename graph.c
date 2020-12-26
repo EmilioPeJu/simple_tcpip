@@ -49,6 +49,11 @@ void insert_link_between_two_nodes(struct node *node1,
     init_interface(&link->intf2, to_ifname, node2, link);
 }
 
+void destroy_interface(struct intf *intf)
+{
+    destroy_udp_socket(&intf->comm);
+}
+
 void destroy_link(struct link *link)
 {
     struct node *node1 = link->intf1.node;
@@ -63,6 +68,8 @@ void destroy_link(struct link *link)
             node2->intfs[i] = NULL;
         }
     }
+    destroy_interface(&link->intf1);
+    destroy_interface(&link->intf2);
     free(link);
 }
 
@@ -77,7 +84,7 @@ static void dump_intf_nw_prop(struct intf_nw_prop *prop)
     if (!prop->is_ip_addr_config)
         printf("Not configured");
     else
-        printf("%u.%u.%u.%u\\%u",
+        printf("%u.%u.%u.%u/%u",
                (unsigned char) ip[0], (unsigned char) ip[1],
                (unsigned char) ip[2], (unsigned char) ip[3],
                prop->mask);
@@ -125,4 +132,5 @@ void init_interface(struct intf *intf, const char *name,  struct node *node,
     node->intfs[slot] = intf;
     init_intf_nw_prop(&intf->intf_nw_prop);
     interface_assign_mac_address(intf);
+    init_udp_socket(&intf->comm);
 }

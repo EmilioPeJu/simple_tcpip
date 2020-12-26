@@ -1,4 +1,7 @@
+#include <string.h>
+#include <unistd.h>
 #include "graph.h"
+#include "comm.h"
 
 int main()
 {
@@ -17,6 +20,10 @@ int main()
     node_set_intf_ip_addr(node1, "eth12", "30.1.1.1", 24);
     node_set_intf_ip_addr(node2, "eth21", "30.1.1.2", 24);
     dump_nw_graph(graph);
+    start_recv_thread();
+    char *msg = "Hello";
+    send_pkt_out(msg, strlen(msg), get_node_if_by_name(node0, "eth01"));
+    sleep(1);
     destroy_node(node0);
     destroy_node(node1);
     destroy_node(node2);

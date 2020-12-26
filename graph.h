@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <string.h>
 #include "list.h"
+#include "net.h"
 #define MAX_IF_NAME_SIZE (32)
 #define MAX_TOPO_NAME_SIZE (32)
 #define MAX_NODE_NAME_SIZE (32)
@@ -15,6 +16,7 @@ struct intf {
     char name[MAX_IF_NAME_SIZE + 1];
     struct node *node;
     struct link *link;
+    struct intf_nw_prop intf_nw_prop;
 };
 
 struct link {
@@ -27,6 +29,7 @@ struct node {
     char name[MAX_NODE_NAME_SIZE + 1];
     struct intf *intfs[MAX_INTFS_PER_NODE];
     struct list_head list;
+    struct node_nw_prop node_nw_prop;
 };
 
 struct graph {
@@ -50,7 +53,7 @@ void insert_link_between_two_nodes(struct node *node1,
 
 void destroy_link(struct link *link);
 
-void dump_graph(struct graph *graph);
+void dump_nw_graph(struct graph *graph);
 
 static inline struct node *get_nbr_node(struct intf *intf) {
     if (!intf->link)
@@ -90,5 +93,8 @@ static inline struct node *get_node_by_node_name(struct graph *graph,
     }
     return NULL;
 }
+
+void init_interface(struct intf *intf, const char *name, struct node *node,
+                    struct link *link);
 
 #endif

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 #include "graph.h"
 
 struct graph *create_new_graph(char *name)
@@ -20,6 +21,7 @@ struct node *create_graph_node(struct graph *graph, const char *node_name)
 {
     struct node *node = calloc(1, sizeof(struct node));
     strncpy(node->name, node_name, MAX_NODE_NAME_SIZE);
+    init_node_nw_prop(&node->node_nw_prop);
     list_add(&node->list, &graph->nodes);
     return node;
 }
@@ -43,16 +45,8 @@ void insert_link_between_two_nodes(struct node *node1,
 {
     struct link *link = calloc(1, sizeof(struct link));
     link->cost = cost;
-    strncpy(link->intf1.name, from_ifname, MAX_IF_NAME_SIZE);
-    strncpy(link->intf2.name, to_ifname, MAX_IF_NAME_SIZE);
-    link->intf1.link = link;
-    link->intf2.link = link;
-    link->intf1.node = node1;
-    link->intf2.node = node2;
-    size_t slot1 = get_node_intf_available_slot(node1);
-    size_t slot2 = get_node_intf_available_slot(node2);
-    node1->intfs[slot1] = &link->intf1;
-    node2->intfs[slot2] = &link->intf2;
+    init_interface(&link->intf1, from_ifname, node1, link);
+    init_interface(&link->intf2, to_ifname, node2, link);
 }
 
 void destroy_link(struct link *link)
@@ -72,19 +66,63 @@ void destroy_link(struct link *link)
     free(link);
 }
 
-void dump_graph(struct graph *graph)
+static void dump_intf_nw_prop(struct intf_nw_prop *prop)
+{
+    char *mac = prop->mac_addr.addr;
+    char *ip = prop->ip_addr.addr;
+    printf("\tmac: %x:%x:%x:%x:%x:%x, ip: ",
+           (unsigned char) mac[0], (unsigned char) mac[1],
+           (unsigned char) mac[2], (unsigned char) mac[3],
+           (unsigned char) mac[4], (unsigned char) mac[5]);
+    if (!prop->is_ip_addr_config)
+        printf("Not configured");
+    else
+        printf("%u.%u.%u.%u\\%u",
+               (unsigned char) ip[0], (unsigned char) ip[1],
+               (unsigned char) ip[2], (unsigned char) ip[3],
+               prop->mask);
+}
+
+static void dump_interface(struct intf *intf)
+{
+    printf("\tInterface: %s, nbr: %s, cost: %u, ",
+           intf->name,
+           get_nbr_node(intf)->name,
+           intf->link->cost);
+    dump_intf_nw_prop(&intf->intf_nw_prop);
+    printf("\n");
+}
+
+void dump_nw_graph(struct graph *graph)
 {
     printf("Graph name: %s\n", graph->name);
     struct node *node;
     list_for_each_entry(node, &graph->nodes, list) {
-        printf("Node name: %s\n", node->name);
+        printf("Node name: %s", node->name);
+        if (node->node_nw_prop.is_lb_addr_config) {
+            char *addr = node->node_nw_prop.lb_addr.addr;
+            printf(", loopback ip: %u.%u.%u.%u",
+                   (unsigned char) addr[0], (unsigned char) addr[1],
+                   (unsigned char) addr[2], (unsigned char) addr[3]);
+        }
+        printf("\n");
         for (size_t i=0; i < MAX_INTFS_PER_NODE; i++) {
             if (node->intfs[i]) {
-                printf("\tInterface: %s, nbr: %s, cost: %u\n",
-                       node->intfs[i]->name,
-                       get_nbr_node(node->intfs[i])->name,
-                       node->intfs[i]->link->cost);
+                dump_interface(node->intfs[i]);
             }
         }
     }
+}
+
+void init_interface(struct intf *intf, const char *name,  struct node *node,
+                    struct link *link)
+{
+    strncpy(intf->name, name, MAX_IF_NAME_SIZE);
+    intf->node = node;
+    intf->link = link;
+    size_t slot = get_node_intf_available_slot(node);
+    assert(slot != -1);
+    node->intfs[slot] = intf;
+    init_intf_nw_prop(&intf->intf_nw_prop);
+    interface_assign_mac_address(intf);
 }

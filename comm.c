@@ -120,16 +120,16 @@ void start_recv_thread()
 void init_udp_socket(struct comm *comm)
 {
     struct sockaddr_in addr;
-    comm->port = get_next_udp_port();
     comm->sock = socket(AF_INET, SOCK_DGRAM, 0);
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(comm->port);
     addr.sin_addr.s_addr = INADDR_ANY;
-    if (bind(comm->sock, (struct sockaddr *) &addr, sizeof(addr))) {
+    while (true) {
+        comm->port = get_next_udp_port();
+        addr.sin_port = htons(comm->port);
+        if (!bind(comm->sock, (struct sockaddr *) &addr, sizeof(addr)))
+            break;
         printf("Error binding to port %u", comm->port);
-        comm->port = 0;
-        comm->sock = 0;
     }
     sockfd_to_comm[comm->sock] = comm;
 }

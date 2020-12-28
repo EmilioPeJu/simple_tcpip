@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include "arp.h"
 #include "graph.h"
 
 struct graph *create_new_graph(char *name)
@@ -34,6 +35,7 @@ void destroy_node(struct node *node)
             destroy_link(node->intfs[i]->link);
         }
     }
+    destroy_arp_table(NODE_ARP_TABLE(node));
     free(node);
 }
 
@@ -75,19 +77,14 @@ void destroy_link(struct link *link)
 
 static void dump_intf_nw_prop(struct intf_nw_prop *prop)
 {
-    char *mac = prop->mac_addr.addr;
-    char *ip = prop->ip_addr.addr;
-    printf("\tmac: %x:%x:%x:%x:%x:%x, ip: ",
-           (unsigned char) mac[0], (unsigned char) mac[1],
-           (unsigned char) mac[2], (unsigned char) mac[3],
-           (unsigned char) mac[4], (unsigned char) mac[5]);
+    u8 *mac = prop->mac_addr.addr;
+    u8 *ip = prop->ip_addr.addr;
+    printf("\tmac: %02x:%02x:%02x:%02x:%02x:%02x, ip: ", mac[0], mac[1],
+           mac[2], mac[3], mac[4], mac[5]);
     if (!prop->is_ip_addr_config)
         printf("Not configured");
     else
-        printf("%u.%u.%u.%u/%u",
-               (unsigned char) ip[0], (unsigned char) ip[1],
-               (unsigned char) ip[2], (unsigned char) ip[3],
-               prop->mask);
+        printf("%u.%u.%u.%u/%u", ip[0], ip[1], ip[2], ip[3], prop->mask);
 }
 
 static void dump_interface(struct intf *intf)
@@ -107,10 +104,9 @@ void dump_nw_graph(struct graph *graph)
     list_for_each_entry(node, &graph->nodes, list) {
         printf("Node name: %s", node->name);
         if (node->node_nw_prop.is_lb_addr_config) {
-            char *addr = node->node_nw_prop.lb_addr.addr;
+            u8 *ip = node->node_nw_prop.lb_addr.addr;
             printf(", loopback ip: %u.%u.%u.%u",
-                   (unsigned char) addr[0], (unsigned char) addr[1],
-                   (unsigned char) addr[2], (unsigned char) addr[3]);
+                   ip[0], ip[1], ip[2], ip[3]);
         }
         printf("\n");
         for (size_t i=0; i < MAX_INTFS_PER_NODE; i++) {
@@ -118,6 +114,7 @@ void dump_nw_graph(struct graph *graph)
                 dump_interface(node->intfs[i]);
             }
         }
+        dump_arp_table(NODE_ARP_TABLE(node));
     }
 }
 

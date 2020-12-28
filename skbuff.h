@@ -9,7 +9,6 @@
 struct sk_buff {
     struct list_head list;
     size_t len;
-    size_t data_len;
     u8 *data;
     u8 *tail;
     u8 *end;
@@ -20,7 +19,6 @@ struct sk_buff {
 inline struct sk_buff *alloc_skb(size_t size)
 {
     struct sk_buff *skb = calloc(1, size + sizeof(struct sk_buff) - 1);
-    skb->data_len = size;
     skb->data = skb->tail = skb->head;
     skb->end = skb->head + size;
     INIT_LIST_HEAD(&skb->list);

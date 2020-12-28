@@ -9,7 +9,7 @@ void apply_mask(char *prefix, char mask, char *str_prefix)
     convert_ip_from_int_to_str(ip, str_prefix);
 }
 
-uint32_t convert_ip_from_str_to_int(const char *ip_addr)
+u32 convert_ip_from_str_to_int(const char *ip_addr)
 {
     char raw_ip_addr[4];
     unsigned int a, b, c, d;
@@ -20,10 +20,10 @@ uint32_t convert_ip_from_str_to_int(const char *ip_addr)
     raw_ip_addr[1] = b;
     raw_ip_addr[2] = c;
     raw_ip_addr[3] = d;
-    return *((uint32_t *) raw_ip_addr);
+    return *((u32 *) raw_ip_addr);
 }
 
-void convert_ip_from_int_to_str(uint32_t ip_addr, char *output)
+void convert_ip_from_int_to_str(u32 ip_addr, char *output)
 {
     sprintf(output, "%u.%u.%u.%u",
             ip_addr & 0xff,
@@ -32,9 +32,11 @@ void convert_ip_from_int_to_str(uint32_t ip_addr, char *output)
             ip_addr>>24 & 0xff);
 }
 
-void layer2_fill_with_broadcast_mac(char *mac)
+void layer2_fill_with_broadcast_mac(struct mac_addr *mac)
 {
-    mac[0] = mac[1] = mac[2] = mac[3] = mac[4] = mac[5] = 255;
+    mac->addr[0] = mac->addr[1] = mac->addr[2] = mac->addr[3] = mac->addr[4] \
+        = mac->addr[5] = 255;
+}
 
 void dump_hex(char *bytes, size_t size)
 {

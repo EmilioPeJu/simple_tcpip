@@ -11,11 +11,20 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include "comm.h"
+#include "ethernet.h"
 #include "graph.h"
+#include "skbuff.h"
+#include "switch.h"
+#include "utils.h"
 #define MAX_COMMS (1024)
 #define MAX_EVENTS (10)
-#define BUFFER_SIZE (2048)
-static char recv_buffer[BUFFER_SIZE];
+#define RECV_RESERVED_HEAD_ROOM (4)
+
+static data_callback receive_callback;
+static  data_callback send_callback;
+static bool want_quit_recv_task;
+static pthread_t recv_thread;
+static bool thread_started = false;
 
 static struct comm *sockfd_to_comm[MAX_COMMS];
 
@@ -26,38 +35,60 @@ static uint16_t get_next_udp_port()
     return next_udp_port++;
 }
 
-int send_pkt_out(char *pkt, size_t pkt_size, struct intf *intf)
+bool send_pkt_out(struct sk_buff *skb, struct intf *intf)
 {
+    bool result = send_bytes_out((char *) skb->data, skb->len, intf);
+    free_skb(skb);
+    return result;
+}
+
+bool send_bytes_out(char *bytes, size_t size, struct intf *intf)
+{
+    if (send_callback)
+        send_callback(bytes, size, intf);
     struct intf *nbr_intf = get_nbr_if(intf);
-    if (!nbr_intf || !nbr_intf->comm.sock || !intf->comm.sock) {
-        printf("Sockets  not available\n");
-        return -1;
+    if (!nbr_intf || !nbr_intf->comm.port || !intf->comm.sock) {
+        printf("Socket  not available\n");
+        return false;
     }
     struct sockaddr_in addr;
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_port = htons(nbr_intf->comm.port);
     addr.sin_addr.s_addr = inet_addr("127.0.0.1");
-    ssize_t nsent = sendto(intf->comm.sock, pkt, pkt_size, MSG_DONTWAIT,
+    ssize_t nsent = sendto(intf->comm.sock, bytes, size, MSG_DONTWAIT,
                            (struct sockaddr *) &addr, sizeof(addr));
     if (nsent < 0) {
         printf("Error while sending\n");
+        return false;
     }
-    return 0;
+    return true;
 }
 
-int pkt_receive(struct intf *intf, char *pkt, size_t pkt_size)
+bool pkt_receive(struct intf *intf, struct sk_buff *skb)
 {
-    return 0;
+    if (receive_callback)
+        receive_callback((char *) skb->data, skb->len, intf);
+    if (IS_INTF_L3_MODE(intf)) {
+        return ethernet_input(intf, skb);
+    } else {
+        return switch_input(intf, skb);
+    }
 }
 
-int send_pkt_flood(struct node *node, struct intf *exempted_intf, char *pkt,
-                   size_t pkt_size)
+bool send_pkt_flood(struct node *node, struct intf *exempted_intf,
+                    struct sk_buff *skb)
 {
-    int rc = 0;
+    return send_bytes_flood(node, exempted_intf, (char *) skb->data, skb->len);
+}
+
+bool send_bytes_flood(struct node *node, struct intf *exempted_intf, char *bytes,
+                      size_t size)
+{
+    bool rc = false;
     for (size_t i=0; i < MAX_INTFS_PER_NODE; i++) {
         if (node->intfs[i] && node->intfs[i] != exempted_intf) {
-            rc |= send_pkt_out(pkt, pkt_size, node->intfs[i]);
+            rc |= send_bytes_out(bytes, size, node->intfs[i]);
         }
     }
     return rc;
@@ -81,39 +112,65 @@ static void *recv_task(void *data)
             }
         }
     }
-    for (;;) {
-        int nfds = epoll_wait(epollfd, events, MAX_EVENTS, -1);
+    printf("Starting receiving thread\n");
+    while (!want_quit_recv_task) {
+        int nfds = epoll_wait(epollfd, events, MAX_EVENTS, 1000);
         if (nfds == -1) {
-            printf("epoll_wait error");
+            printf("epoll_wait error\n");
         }
         for (size_t i=0; i < nfds; i++) {
             int fd = events[i].data.fd;
             struct sockaddr_in addr;
             socklen_t addr_len;
             if (sockfd_to_comm[fd]) {
-                ssize_t nrecv = recvfrom(fd, recv_buffer, BUFFER_SIZE,
+                struct sk_buff *skb = alloc_skb(RECV_BUFFER_SIZE);
+                skb_reserve(skb, RECV_RESERVED_HEAD_ROOM);
+                ssize_t nrecv = recvfrom(fd, skb->data, skb_tailroom(skb),
                     MSG_DONTWAIT, (struct sockaddr *) &addr, &addr_len);
                 if (nrecv < 0) {
                     printf("recvfrom error: %ld\n", nrecv);
+                    free_skb(skb);
                 } else {
+                    skb_put(skb, nrecv);
                     struct intf *intf = COMM_INTF(sockfd_to_comm[fd]);
                     printf("Packet received from %s:%hu",
                            inet_ntoa(addr.sin_addr), htons(addr.sin_port));
-                    printf(", node %s, interface %s received %lu bytes: %s\n",
-                           intf->node->name, intf->name, nrecv, recv_buffer);
-                    pkt_receive(intf, recv_buffer, nrecv);
+                    printf(", node %s, interface %s received %lu bytes: \n",
+                           intf->node->name, intf->name, skb->len);
+                    dump_hex((char *) skb->data, skb->len);
+                    printf("\n");
+                    if(!pkt_receive(intf, skb)) {
+                        printf("Packet dropped\n");
+                        free(skb);
+                    }
                 }
             }
         }
     }
+    want_quit_recv_task = false;
+    printf("Stopping receiving thread\n");
+    return NULL;
 }
 
 void start_recv_thread()
 {
-    pthread_t thread;
-    if (pthread_create(&thread, NULL, recv_task, NULL)) {
+    if (thread_started) {
+        return;
+    }
+    if (pthread_create(&recv_thread, NULL, recv_task, NULL)) {
         printf("pthread_create error\n");
         exit(EXIT_FAILURE);
+    }
+    thread_started = true;
+}
+
+void stop_recv_thread()
+{
+    if (thread_started) {
+        want_quit_recv_task = true;
+        if (!pthread_join(recv_thread, NULL)) {
+            thread_started = false;
+        }
     }
 }
 
@@ -142,5 +199,15 @@ void destroy_udp_socket(struct comm *comm)
         comm-> port = 0;
         comm->sock = 0;
     }
+}
+
+void set_send_callback(data_callback cb)
+{
+    send_callback = cb;
+}
+
+void set_receive_callback(data_callback cb)
+{
+    receive_callback = cb;
 }
 

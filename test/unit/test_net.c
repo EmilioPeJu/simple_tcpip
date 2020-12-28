@@ -2,34 +2,21 @@
 #include <unity.h>
 #include "graph.h"
 #include "net.h"
+#include "fixture.h"
 #define TEST_IP "192.168.0.1"
 #define TEST_IP_RAW "\xc0\xa8\x00\x01"
 #define TEST_MASK (24)
 
 struct graph *tgraph;
-struct node *tnode0;
-struct node *tnode1;
-struct node *tnode2;
 
 void setUp()
 {
-    // set up a test graph
-    // node1 <---> node2
-    tgraph = create_new_graph("graph");
-    tnode0 = create_graph_node(tgraph, "node_0");
-    tnode1 = create_graph_node(tgraph, "node_1");
-    tnode2 = create_graph_node(tgraph, "node_2");
-    insert_link_between_two_nodes(tnode0, tnode1, "eth01", "eth10", 1);
-    insert_link_between_two_nodes(tnode0, tnode2, "eth02", "eth20", 1);
-    node_set_intf_ip_addr(tnode0, "eth01", "192.168.89.1", 24);
-    node_set_intf_ip_addr(tnode0, "eth02", "172.16.10.1", 16);
+    tgraph = create_test_topology();
 }
 
 void tearDown()
 {
-    destroy_node(tnode1);
-    destroy_node(tnode2);
-    destroy_graph(tgraph);
+    destroy_test_topology();
 }
 
 void test_init_intf_nw_prop()
@@ -71,6 +58,7 @@ void test_node_set_loopback_address_with_valid_address()
 
 void test_set_intf_ip_address_with_valid_address()
 {
+    struct node *tnode0 = get_node_by_node_name(tgraph, "node0");
     node_set_intf_ip_addr(tnode0, "eth01", TEST_IP, TEST_MASK);
     TEST_ASSERT_EQUAL(0,
         memcmp(IF_IP(tnode0->intfs[0]), TEST_IP_RAW, 4));
@@ -80,6 +68,7 @@ void test_set_intf_ip_address_with_valid_address()
 
 void test_get_matching_subnet_interface_with_matching_if()
 {
+    struct node *tnode0 = get_node_by_node_name(tgraph, "node0");
     TEST_ASSERT_MESSAGE(
         get_matching_subnet_interface(tnode0,"192.168.89.20") == tnode0->intfs[0],
         "First interface not found");
@@ -90,6 +79,7 @@ void test_get_matching_subnet_interface_with_matching_if()
 
 void test_get_matching_subnet_interface_without_matching_if()
 {
+    struct node *tnode0 = get_node_by_node_name(tgraph, "node0");
     TEST_ASSERT(
         get_matching_subnet_interface(tnode0,"10.20.30.40") == NULL);
     TEST_ASSERT(

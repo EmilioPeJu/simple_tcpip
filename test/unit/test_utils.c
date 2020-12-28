@@ -33,9 +33,9 @@ void test_convert_ip_from_int_to_str()
 
 void test_is_mac_broadcast_addr()
 {
-    char mac[6];
-    layer2_fill_with_broadcast_mac(mac);
-    TEST_ASSERT(IS_MAC_BROADCAST_ADDR(mac));
+    struct mac_addr mac;
+    layer2_fill_with_broadcast_mac(&mac);
+    TEST_ASSERT(IS_MAC_BROADCAST_ADDR(&mac));
 }
 
 int main()

@@ -4,8 +4,7 @@
 #include "graph.h"
 #include "utils.h"
 
-static inline bool get_raw_ip_addr(const char *ip_addr,
-                                   char *raw_ip_addr)
+static inline bool get_raw_ip_addr(const char *ip_addr, u8 *raw_ip_addr)
 {
     uint32_t ip_num;
     if (!(ip_num=convert_ip_from_str_to_int(ip_addr))) {
@@ -17,7 +16,7 @@ static inline bool get_raw_ip_addr(const char *ip_addr,
 
 bool node_set_loopback_address(struct node *node, char *ip_addr)
 {
-    if (!get_raw_ip_addr(ip_addr, NODE_LO_ADDR(node)))
+    if (!get_raw_ip_addr(ip_addr, NODE_LO_ADDR(node)->addr))
         return false;
     node->node_nw_prop.is_lb_addr_config = true;
     return true;
@@ -29,7 +28,7 @@ bool node_set_intf_ip_addr(struct node *node, char *if_name, char *ip_addr,
     struct intf *intf = get_node_if_by_name(node, if_name);
     if (!intf)
         return false;
-    if(!get_raw_ip_addr(ip_addr, IF_IP(intf)))
+    if(!get_raw_ip_addr(ip_addr, IF_IP(intf)->addr))
         return false;
     intf->intf_nw_prop.mask = mask;
     intf->intf_nw_prop.is_ip_addr_config = true;
@@ -51,15 +50,16 @@ void interface_assign_mac_address(struct intf *intf)
     memcpy(IF_MAC(intf), &code, MAC_ADDR_SIZE);
 }
 
-struct intf *_get_matching_subnet_interface(struct node *node, char *ip_addr)
+struct intf *_get_matching_subnet_interface(struct node *node,
+                                            struct ip_addr *ip)
 {
     struct intf *intf;
     for (size_t i=0; i < MAX_INTFS_PER_NODE; i++) {
         intf = node->intfs[i];
         if (intf && IS_INTF_L3_MODE(intf)) {
             uint32_t mask = intf->intf_nw_prop.mask;
-            uint32_t ip1 = *((uint32_t *) ip_addr) & ((1<<mask) - 1);
-            uint32_t ip2 = *((uint32_t *) IF_IP(intf)) & ((1<<mask) - 1);
+            uint32_t ip1 = ip->iaddr & ((1<<mask) - 1);
+            uint32_t ip2 = IF_IP(intf)->iaddr & ((1<<mask) - 1);
             if (ip1 == ip2)
                 return intf;
         }
@@ -69,7 +69,8 @@ struct intf *_get_matching_subnet_interface(struct node *node, char *ip_addr)
 
 struct intf *get_matching_subnet_interface(struct node *node, char *ip_addr)
 {
-    uint32_t ip = convert_ip_from_str_to_int(ip_addr);
-    return _get_matching_subnet_interface(node, (char *) &ip);
+    struct ip_addr ip;
+    ip.iaddr = convert_ip_from_str_to_int(ip_addr);
+    return _get_matching_subnet_interface(node, &ip);
 }
 

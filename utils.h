@@ -8,6 +8,7 @@ uint32_t convert_ip_from_str_to_int(const char *ip_addr);
 
 void convert_ip_from_int_to_str(uint32_t ip_addr, char *output);
 
+void dump_hex(char *bytes, size_t size);
 void layer2_fill_with_broadcast_mac(char *mac);
 
 #define IS_MAC_BROADCAST_ADDR(mac) (mac[0] == -1 && mac[1] == -1 && \

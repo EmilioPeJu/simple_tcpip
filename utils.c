@@ -35,4 +35,28 @@ void convert_ip_from_int_to_str(uint32_t ip_addr, char *output)
 void layer2_fill_with_broadcast_mac(char *mac)
 {
     mac[0] = mac[1] = mac[2] = mac[3] = mac[4] = mac[5] = 255;
+
+void dump_hex(char *bytes, size_t size)
+{
+    for (size_t i=0; i < size/16; i++) {
+        for (size_t j=i*16; j < (i+1)*16; j++) {
+            printf("%02x ", (unsigned char) bytes[j]);
+        }
+        printf("| ");
+        for (size_t j=i*16; j < (i+1)*16; j++) {
+            printf("%c", bytes[j]);
+        }
+        printf("\n");
+    }
+    for (size_t i=size/16 * 16; i < size; i++) {
+        printf("%02x ", (unsigned char) bytes[i]);
+    }
+    if (size%16) {
+        for (size_t i=0; i < 16 - size%16; i++)
+            printf("   ");
+    }
+    printf("| ");
+    for (size_t i=size/16 * 16; i < size; i++) {
+        printf("%c", bytes[i]);
+    }
 }

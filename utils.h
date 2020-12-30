@@ -4,6 +4,7 @@
 #include "address.h"
 
 #define HTONS(n) ((n>>8) + ((n & 0xff) <<8))
+#define NTOHS(n) HTONS(n)
 
 void apply_mask(char *prefix, char mask, char *str_prefix);
 
@@ -26,5 +27,7 @@ void dump_hex(char *bytes, size_t size);
    ({ __typeof__ (a) _a = (a); \
       __typeof__ (b) _b = (b); \
       _a < _b ? _a : _b; })
+
+u16 calc_checksum_16(char *buff, size_t size);
 
 #endif

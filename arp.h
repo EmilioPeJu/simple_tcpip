@@ -18,10 +18,12 @@ struct arp_table {
 };
 
 struct arp_entry {
-    struct ip_addr ip_addr;
-    struct mac_addr mac_addr;
+    struct ip_addr ip;
+    struct mac_addr mac;
     struct intf *intf;
     struct list_head list;
+    bool resolved;
+    struct list_head pending_pkts;
 };
 
 struct arp_hdr {
@@ -38,8 +40,10 @@ struct arp_hdr {
 
 #define ARP_HDR_SIZE (sizeof(struct arp_hdr))
 
-bool arp_input(struct intf *intf, struct sk_buff *skb);
+// function that processes a ARP message addressed to local node
+bool arp_input(struct sk_buff *skb);
 
+// functions used in the usual ARP cycle:
 void send_arp_broadcast_request(struct intf *intf, struct ip_addr ip);
 
 bool process_arp_broadcast_request(struct intf *intf, struct arp_hdr *hdr);
@@ -48,9 +52,13 @@ void send_arp_reply_msg(struct intf *intf, struct arp_hdr *sender_hdr);
 
 bool process_arp_reply_msg(struct intf *intf,  struct arp_hdr *hdr);
 
+// ARP table related functions
 struct arp_entry *arp_table_lookup(struct arp_table *table, struct ip_addr ip);
 
 bool arp_table_entry_add(struct arp_table *table, struct arp_entry *entry);
+
+void init_arp_entry(struct arp_entry *entry, struct ip_addr ip,
+                    struct intf *intf);
 
 void arp_table_update_from_arp_reply(struct arp_table *table,
                                      struct arp_hdr *hdr,
@@ -58,11 +66,9 @@ void arp_table_update_from_arp_reply(struct arp_table *table,
 
 void dump_arp_table(struct arp_table *table);
 
+void init_arp_table(struct arp_table *table);
+
 void destroy_arp_table(struct arp_table *table);
 
-inline void init_arp_table(struct arp_table *table)
-{
-    INIT_LIST_HEAD(&table->entries);
-}
 
 #endif

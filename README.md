@@ -13,3 +13,5 @@ Clone of sachinites' TCP/IP implementation with the following differences:
 ## Features implemented so far
 - Generic graph API
 - ARP request and reply handling
+- Basic IP handling
+- ICMP echo request/reply

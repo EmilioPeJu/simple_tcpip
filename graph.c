@@ -4,6 +4,7 @@
 #include <assert.h>
 #include "arp.h"
 #include "graph.h"
+#include "ip.h"
 
 struct graph *create_new_graph(char *name)
 {
@@ -15,6 +16,10 @@ struct graph *create_new_graph(char *name)
 
 void destroy_graph(struct graph *graph)
 {
+    struct node *node, *tmp;
+    list_for_each_entry_safe(node, tmp, &graph->nodes, list) {
+        destroy_node(node);
+    }
     free(graph);
 }
 
@@ -35,7 +40,7 @@ void destroy_node(struct node *node)
             destroy_link(node->intfs[i]->link);
         }
     }
-    destroy_arp_table(NODE_ARP_TABLE(node));
+    destroy_node_nw_prop(&node->node_nw_prop);
     free(node);
 }
 
@@ -115,6 +120,7 @@ void dump_nw_graph(struct graph *graph)
             }
         }
         dump_arp_table(NODE_ARP_TABLE(node));
+        dump_rt_table(NODE_RT_TABLE(node));
     }
 }
 

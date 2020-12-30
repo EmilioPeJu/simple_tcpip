@@ -16,9 +16,9 @@ struct comm
 
 bool send_bytes_out(char *bytes, size_t size, struct intf *intf);
 
-bool send_pkt_out(struct sk_buff *skb, struct intf *intf);
+bool send_pkt_out(struct intf *intf, struct sk_buff *skb);
 
-bool pkt_receive(struct intf *intf, struct sk_buff *skb);
+bool pkt_receive(struct sk_buff *skb);
 
 bool send_pkt_flood(struct node *node, struct intf *exempted_intf,
                     struct sk_buff *skb);

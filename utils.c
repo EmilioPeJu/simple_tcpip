@@ -62,3 +62,15 @@ void dump_hex(char *bytes, size_t size)
         printf("%c", bytes[i]);
     }
 }
+
+u16 calc_checksum_16(char *buff, size_t size)
+{
+    u32 result = 0;
+    u16 *ptr = (u16 *) buff;
+    for (size_t i=0; i < size/2; i++) {
+        result += NTOHS(ptr[i]);
+    }
+    result = (result & 0xffff) + (result >> 16);
+    result = (result & 0xffff) + (result >> 16);
+    return (~result) & 0xffff;
+}

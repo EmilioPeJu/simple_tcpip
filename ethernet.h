@@ -36,6 +36,9 @@ inline struct ethernet_hdr *wrap_eth_hdr_with_payload(char *pkt, size_t size)
 bool ethernet_input_qualify(struct intf *intf,
                             struct ethernet_hdr *hdr);
 
-bool ethernet_input(struct intf *intf, struct sk_buff *skb);
+bool ethernet_input(struct sk_buff *skb);
+
+bool ethernet_output(struct intf *intf, struct mac_addr mac, u16 proto,
+                     struct sk_buff *skb);
 
 #endif

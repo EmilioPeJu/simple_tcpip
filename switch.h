@@ -17,11 +17,10 @@ struct mac_table_entry {
     struct list_head list;
 };
 
-bool switch_input(struct intf *intf, struct sk_buff *skb);
+bool switch_input(struct sk_buff *skb);
 
-inline void init_mac_table(struct mac_table *table)
-{
-    INIT_LIST_HEAD(&table->entries);
-}
+void init_mac_table(struct mac_table *table);
+
+void destroy_mac_table(struct mac_table *table);
 
 #endif

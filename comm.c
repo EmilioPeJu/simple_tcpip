@@ -35,10 +35,11 @@ static uint16_t get_next_udp_port()
     return next_udp_port++;
 }
 
-bool send_pkt_out(struct sk_buff *skb, struct intf *intf)
+bool send_pkt_out(struct intf *intf, struct sk_buff *skb)
 {
     bool result = send_bytes_out((char *) skb->data, skb->len, intf);
-    free_skb(skb);
+    if (result)
+        free_skb(skb);
     return result;
 }
 
@@ -65,14 +66,14 @@ bool send_bytes_out(char *bytes, size_t size, struct intf *intf)
     return true;
 }
 
-bool pkt_receive(struct intf *intf, struct sk_buff *skb)
+bool pkt_receive(struct sk_buff *skb)
 {
     if (receive_callback)
-        receive_callback((char *) skb->data, skb->len, intf);
-    if (IS_INTF_L3_MODE(intf)) {
-        return ethernet_input(intf, skb);
+        receive_callback((char *) skb->data, skb->len, skb->intf);
+    if (IS_INTF_L3_MODE(skb->intf)) {
+        return ethernet_input(skb);
     } else {
-        return switch_input(intf, skb);
+        return switch_input(skb);
     }
 }
 
@@ -112,10 +113,9 @@ static void *recv_task(void *data)
             }
         }
     }
-    printf("Starting receiving thread\n");
     while (!want_quit_recv_task) {
         int nfds = epoll_wait(epollfd, events, MAX_EVENTS, 1000);
-        if (nfds == -1) {
+        if (nfds < 0) {
             printf("epoll_wait error\n");
         }
         for (size_t i=0; i < nfds; i++) {
@@ -133,13 +133,14 @@ static void *recv_task(void *data)
                 } else {
                     skb_put(skb, nrecv);
                     struct intf *intf = COMM_INTF(sockfd_to_comm[fd]);
+                    skb->intf = intf;
                     printf("Packet received from %s:%hu",
                            inet_ntoa(addr.sin_addr), htons(addr.sin_port));
                     printf(", node %s, interface %s received %lu bytes: \n",
                            intf->node->name, intf->name, skb->len);
                     dump_hex((char *) skb->data, skb->len);
                     printf("\n");
-                    if(!pkt_receive(intf, skb)) {
+                    if(!pkt_receive(skb)) {
                         printf("Packet dropped\n");
                         free(skb);
                     }
@@ -148,7 +149,6 @@ static void *recv_task(void *data)
         }
     }
     want_quit_recv_task = false;
-    printf("Stopping receiving thread\n");
     return NULL;
 }
 
@@ -186,7 +186,6 @@ void init_udp_socket(struct comm *comm)
         addr.sin_port = htons(comm->port);
         if (!bind(comm->sock, (struct sockaddr *) &addr, sizeof(addr)))
             break;
-        printf("Error binding to port %u", comm->port);
     }
     sockfd_to_comm[comm->sock] = comm;
 }

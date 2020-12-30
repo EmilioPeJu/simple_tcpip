@@ -5,9 +5,15 @@
 #include <stddef.h>
 #include "list.h"
 #include "address.h"
+struct ethernet_hdr;
+struct intf;
+struct ip_hdr;
 
 struct sk_buff {
     struct list_head list;
+    struct intf *intf;
+    struct ethernet_hdr *ethernet_hdr;
+    struct ip_hdr *ip_hdr;
     size_t len;
     u8 *data;
     u8 *tail;

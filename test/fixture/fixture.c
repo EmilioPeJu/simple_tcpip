@@ -1,6 +1,7 @@
 #include <string.h>
 #include <unistd.h>
 #include "comm.h"
+#include "fixture.h"
 #include "graph.h"
 static struct graph *tgraph;
 #define MAX_SAVES_FRAMES (32)
@@ -54,7 +55,7 @@ static void receive_callback(char *bytes, size_t size, struct intf *intf)
     recv_n = (recv_n + 1) % MAX_SAVES_FRAMES;
 }
 
-void wait_has_received(size_t n)
+void wait_test_graph_received(size_t n)
 {
     // TODO: use condition variable instead
     while (recv_n < n)
@@ -73,9 +74,9 @@ struct graph *create_test_topology()
     struct node *tnode2 = create_graph_node(tgraph, "node2");
     insert_link_between_two_nodes(tnode0, tnode1, "eth01", "eth10", 1);
     insert_link_between_two_nodes(tnode0, tnode2, "eth02", "eth20", 1);
-    node_set_intf_ip_addr(tnode0, "eth01", "192.168.89.1", 24);
+    node_set_intf_ip_addr(tnode0, "eth01", TEST_ETH01_IP_STR, 24);
     node_set_intf_ip_addr(tnode0, "eth02", "172.16.10.1", 16);
-    node_set_intf_ip_addr(tnode1, "eth10", "192.168.89.2", 24);
+    node_set_intf_ip_addr(tnode1, "eth10", TEST_ETH10_IP_STR, 24);
     node_set_intf_ip_addr(tnode2, "eth20", "172.16.10.2", 16);
     reset_test_recv();
     set_receive_callback(receive_callback);
@@ -84,8 +85,7 @@ struct graph *create_test_topology()
 
 void destroy_test_topology()
 {
-    destroy_node(get_node_by_node_name(tgraph, "node0"));
-    destroy_node(get_node_by_node_name(tgraph, "node1"));
-    destroy_node(get_node_by_node_name(tgraph, "node2"));
+    destroy_graph(tgraph);
+    tgraph = NULL;
     set_receive_callback(NULL);
 }

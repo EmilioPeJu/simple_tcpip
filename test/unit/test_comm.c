@@ -23,7 +23,7 @@ static void send_receive(char *test_data, size_t test_data_len,
                          size_t frame_i, struct intf *oif, struct intf *iif)
 {
     send_bytes_out(test_data, test_data_len, oif);
-    wait_has_received(frame_i + 1);
+    wait_test_graph_received(frame_i + 1);
     TEST_ASSERT_EQUAL_MESSAGE(0, memcmp(test_data, get_test_recv_data(frame_i),
                                         test_data_len),
                               "Message doesn't match");

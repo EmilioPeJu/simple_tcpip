@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include "net.h"
 #include "graph.h"
+#include "ip.h"
 #include "utils.h"
 
 static inline bool get_raw_ip_addr(const char *ip_addr, u8 *raw_ip_addr)
@@ -28,10 +29,16 @@ bool node_set_intf_ip_addr(struct node *node, char *if_name, char *ip_addr,
     struct intf *intf = get_node_if_by_name(node, if_name);
     if (!intf)
         return false;
-    if(!get_raw_ip_addr(ip_addr, IF_IP(intf)->addr))
+    struct ip_addr ip, next;
+    ip.iaddr = convert_ip_from_str_to_int(ip_addr);
+    if(!ip.iaddr)
         return false;
+    IF_IP(intf)->iaddr = ip.iaddr;
+    next.iaddr = 0;
     intf->intf_nw_prop.mask = mask;
     intf->intf_nw_prop.is_ip_addr_config = true;
+    MASK_IP(&ip, mask);
+    rt_table_add_route(NODE_RT_TABLE(node), ip, mask, next, intf);
     return true;
 }
 
@@ -51,14 +58,14 @@ void interface_assign_mac_address(struct intf *intf)
 }
 
 struct intf *_get_matching_subnet_interface(struct node *node,
-                                            struct ip_addr *ip)
+                                            struct ip_addr ip)
 {
     struct intf *intf;
     for (size_t i=0; i < MAX_INTFS_PER_NODE; i++) {
         intf = node->intfs[i];
         if (intf && IS_INTF_L3_MODE(intf)) {
             uint32_t mask = intf->intf_nw_prop.mask;
-            uint32_t ip1 = ip->iaddr & ((1<<mask) - 1);
+            uint32_t ip1 = ip.iaddr & ((1<<mask) - 1);
             uint32_t ip2 = IF_IP(intf)->iaddr & ((1<<mask) - 1);
             if (ip1 == ip2)
                 return intf;
@@ -71,6 +78,27 @@ struct intf *get_matching_subnet_interface(struct node *node, char *ip_addr)
 {
     struct ip_addr ip;
     ip.iaddr = convert_ip_from_str_to_int(ip_addr);
-    return _get_matching_subnet_interface(node, &ip);
+    return _get_matching_subnet_interface(node, ip);
+}
+
+
+void init_intf_nw_prop(struct intf_nw_prop *props)
+{
+    memset(props, 0, sizeof(*props));
+}
+
+void init_node_nw_prop(struct node_nw_prop *props)
+{
+    memset(props, 0, sizeof(*props));
+    init_arp_table(&props->arp_table);
+    init_rt_table(&props->rt_table);
+    init_mac_table(&props->mac_table);
+}
+
+void destroy_node_nw_prop(struct node_nw_prop *props)
+{
+    destroy_arp_table(&props->arp_table);
+    destroy_mac_table(&props->mac_table);
+    destroy_rt_table(&props->rt_table);
 }
 

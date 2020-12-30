@@ -5,7 +5,10 @@
 #include <string.h>
 #include "address.h"
 #include "arp.h"
+#include "ip.h"
 #include "switch.h"
+#define BUFF_HEADROOM (60)
+#define BUFF_TAILROOM (46)
 
 struct node;
 struct intf;
@@ -15,6 +18,7 @@ struct node_nw_prop {
     struct ip_addr lb_addr;
     struct arp_table arp_table;
     struct mac_table mac_table;
+    struct rt_table rt_table;
 };
 
 struct  intf_nw_prop {
@@ -29,22 +33,16 @@ bool node_set_loopback_address(struct node *node, char *ip_addr);
 bool node_set_intf_ip_addr(struct node *node, char *if_name,
                            char *ip_addr, char mask);
 
-inline void init_intf_nw_prop(struct intf_nw_prop *props)
-{
-    memset(props, 0, sizeof(*props));
-}
+void init_intf_nw_prop(struct intf_nw_prop *props);
 
-inline void init_node_nw_prop(struct node_nw_prop *props)
-{
-    memset(props, 0, sizeof(*props));
-    init_arp_table(&props->arp_table);
-    init_mac_table(&props->mac_table);
-}
+void init_node_nw_prop(struct node_nw_prop *props);
+
+void destroy_node_nw_prop(struct node_nw_prop *props);
 
 void interface_assign_mac_address(struct intf *intf);
 
 struct intf *_get_matching_subnet_interface(struct node *node,
-                                            struct ip_addr *ip);
+                                            struct ip_addr ip);
 
 struct intf *get_matching_subnet_interface(struct node *node, char *ip_addr);
 
@@ -52,5 +50,6 @@ struct intf *get_matching_subnet_interface(struct node *node, char *ip_addr);
 #define IF_IP(if_ptr) (&(if_ptr)->intf_nw_prop.ip_addr)
 #define NODE_LO_ADDR(node_ptr) (&(node_ptr)->node_nw_prop.lb_addr)
 #define NODE_ARP_TABLE(node_ptr) (&(node_ptr)->node_nw_prop.arp_table)
+#define NODE_RT_TABLE(node_ptr) (&(node_ptr)->node_nw_prop.rt_table)
 #define IS_INTF_L3_MODE(if_ptr) ((if_ptr)->intf_nw_prop.is_ip_addr_config)
 #endif

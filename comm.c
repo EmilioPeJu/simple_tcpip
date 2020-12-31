@@ -18,7 +18,6 @@
 #include "utils.h"
 #define MAX_COMMS (1024)
 #define MAX_EVENTS (10)
-#define RECV_RESERVED_HEAD_ROOM (4)
 
 static data_callback receive_callback;
 static  data_callback send_callback;

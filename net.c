@@ -3,6 +3,7 @@
 #include "net.h"
 #include "graph.h"
 #include "ip.h"
+#include "udp.h"
 #include "utils.h"
 
 static inline bool get_raw_ip_addr(const char *ip_addr, u8 *raw_ip_addr)
@@ -74,6 +75,19 @@ struct intf *_get_matching_subnet_interface(struct node *node,
     return NULL;
 }
 
+struct intf *_get_matching_interface(struct node *node, struct ip_addr ip)
+{
+    struct intf *intf;
+    for (size_t i=0; i < MAX_INTFS_PER_NODE; i++) {
+        intf = node->intfs[i];
+        if (intf && IS_INTF_L3_MODE(intf)) {
+            if (ip.iaddr == IF_IP(intf)->iaddr)
+                return intf;
+        }
+    }
+    return NULL;
+}
+
 struct intf *get_matching_subnet_interface(struct node *node, char *ip_addr)
 {
     struct ip_addr ip;
@@ -85,6 +99,7 @@ struct intf *get_matching_subnet_interface(struct node *node, char *ip_addr)
 void init_intf_nw_prop(struct intf_nw_prop *props)
 {
     memset(props, 0, sizeof(*props));
+    init_udp_socks_manager(&props->udp_socks_manager);
 }
 
 void init_node_nw_prop(struct node_nw_prop *props)

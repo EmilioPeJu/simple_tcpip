@@ -5,7 +5,9 @@
 #include "ip.h"
 #include "graph.h"
 #include "skbuff.h"
+#include "udp.h"
 #include "utils.h"
+
 static bool ip_forward_enable = true;
 
 bool ip_input(struct sk_buff *skb)
@@ -16,6 +18,10 @@ bool ip_input(struct sk_buff *skb)
     case IP_PROTO_ICMP:
         skb_pull(skb, IP_HDR_SIZE);
         return icmp_input(skb);
+    case IP_PROTO_UDP:
+        skb_pull(skb, IP_HDR_SIZE);
+        skb->udp_hdr = (struct udp_hdr *) skb->data;
+        return udp_input(skb);
     default:
         printf("Unknown IP protocol\n");
         return false;
@@ -35,7 +41,15 @@ bool ip_forward(struct sk_buff *skb)
 {
     if (!ip_forward_enable)
         return false;
-    return ip_postroute(skb->intf->node, skb);
+    struct ip_hdr *hdr = (struct ip_hdr *) skb->data;
+    if (!hdr->ttl)
+        return false;
+    if(!--hdr->ttl)
+        return false;
+    struct node *node = skb->intf->node;
+    // we don't want to force an output interface
+    skb->intf = NULL;
+    return ip_postroute(node, skb);
 }
 
 bool ip_output(struct node *node, struct ip_addr ip, u8 proto,
@@ -45,6 +59,7 @@ bool ip_output(struct node *node, struct ip_addr ip, u8 proto,
     init_ip_hdr(hdr);
     hdr->dst_ip.iaddr = ip.iaddr;
     hdr->proto = proto;
+    hdr->total_len = HTONS(skb->len);
     return ip_postroute(node, skb);
 }
 
@@ -55,6 +70,11 @@ bool ip_postroute(struct node *node, struct sk_buff *skb)
     struct ip_addr target_ip;
     if (!rt_entry) {
         printf("No matching routing table entry");
+        return false;
+    }
+    if (skb->intf && skb->intf != rt_entry->intf) {
+        // interface that upper layer  wants to use doesn't match
+        // the one found in the routing table
         return false;
     }
     skb->intf = rt_entry->intf;

@@ -7,6 +7,7 @@
 #include "arp.h"
 #include "ip.h"
 #include "switch.h"
+#include "udp.h"
 #define BUFF_HEADROOM (60)
 #define BUFF_TAILROOM (46)
 
@@ -22,6 +23,7 @@ struct node_nw_prop {
 };
 
 struct  intf_nw_prop {
+    struct udp_socks_manager udp_socks_manager;
     struct mac_addr mac_addr;
     bool is_ip_addr_config;
     struct ip_addr ip_addr;
@@ -46,8 +48,12 @@ struct intf *_get_matching_subnet_interface(struct node *node,
 
 struct intf *get_matching_subnet_interface(struct node *node, char *ip_addr);
 
+struct intf *_get_matching_interface(struct node *node, struct ip_addr ip);
+
 #define IF_MAC(if_ptr) (&(if_ptr)->intf_nw_prop.mac_addr)
 #define IF_IP(if_ptr) (&(if_ptr)->intf_nw_prop.ip_addr)
+#define IF_UDP_SOCKS_MANAGER(if_ptr) \
+    (&(if_ptr)->intf_nw_prop.udp_socks_manager)
 #define NODE_LO_ADDR(node_ptr) (&(node_ptr)->node_nw_prop.lb_addr)
 #define NODE_ARP_TABLE(node_ptr) (&(node_ptr)->node_nw_prop.arp_table)
 #define NODE_RT_TABLE(node_ptr) (&(node_ptr)->node_nw_prop.rt_table)

@@ -11,7 +11,6 @@
 int main()
 {
     struct graph *graph = create_test_topology();
-    dump_nw_graph(graph);
     struct node *node0 = get_node_by_node_name(graph, "node0");
     start_recv_thread();
     if(!ping(node0, TEST_ETH10_IP_STR)){

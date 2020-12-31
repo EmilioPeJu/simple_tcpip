@@ -14,6 +14,7 @@ struct sk_buff {
     struct intf *intf;
     struct ethernet_hdr *ethernet_hdr;
     struct ip_hdr *ip_hdr;
+    struct udp_hdr *udp_hdr;
     size_t len;
     u8 *data;
     u8 *tail;

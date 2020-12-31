@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #define RECV_BUFFER_SIZE (2048)
+#define RECV_RESERVED_HEAD_ROOM (4)
 struct intf;
 struct graph;
 struct node;

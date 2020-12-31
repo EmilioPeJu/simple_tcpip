@@ -26,7 +26,6 @@ inline void list_del(struct list_head *entry)
 {
     entry->prev->next = entry->next;
     entry->next->prev = entry->prev;
-    INIT_LIST_HEAD(entry);
 }
 
 #define list_for_each(pos, head) \
@@ -43,6 +42,8 @@ inline void list_del(struct list_head *entry)
 
 #define list_first_entry(ptr, type, member) \
     list_entry((ptr)->next, type, member)
+#define list_last_entry(ptr, type, member) \
+    list_entry((ptr)->prev, type, member)
 #define list_next_entry(pos, member) list_entry((pos)->member.next, typeof(*(pos)), member)
 #define list_entry_is_head(pos, head, member) (&pos->member != (head))
 

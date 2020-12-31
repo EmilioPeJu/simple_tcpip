@@ -87,9 +87,10 @@ static void dump_intf_nw_prop(struct intf_nw_prop *prop)
     printf("\tmac: %02x:%02x:%02x:%02x:%02x:%02x, ip: ", mac[0], mac[1],
            mac[2], mac[3], mac[4], mac[5]);
     if (!prop->is_ip_addr_config)
-        printf("Not configured");
+        printf("Not configured ");
     else
-        printf("%u.%u.%u.%u/%u", ip[0], ip[1], ip[2], ip[3], prop->mask);
+        printf("%u.%u.%u.%u/%u ", ip[0], ip[1], ip[2], ip[3], prop->mask);
+    dump_udp_socks_manager(&prop->udp_socks_manager);
 }
 
 static void dump_interface(struct intf *intf)
@@ -99,7 +100,6 @@ static void dump_interface(struct intf *intf)
            get_nbr_node(intf)->name,
            intf->link->cost);
     dump_intf_nw_prop(&intf->intf_nw_prop);
-    printf("\n");
 }
 
 void dump_nw_graph(struct graph *graph)

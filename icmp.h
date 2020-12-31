@@ -7,6 +7,7 @@
 #define ICMP_ECHO_REQUEST_CODE (0)
 #define ICMP_ECHO_REPLY_TYPE (0)
 #define ICMP_ECHO_REPLY_CODE (0)
+#define ICMP_HDR_REST_MIN_SIZE (4)
 struct sk_buff;
 struct node;
 

@@ -53,12 +53,15 @@ bool icmp_out(struct node *node, struct ip_addr ip, u8 type, u8 code,
 bool icmp_input(struct sk_buff *skb)
 {
     struct icmp_hdr *hdr = (struct icmp_hdr *) skb->data;
+    if (skb->len < ICMP_HDR_SIZE)
+        return false;
     if (hdr->type == ICMP_ECHO_REQUEST_TYPE &&
             hdr->code == ICMP_ECHO_REQUEST_CODE) {
         printf("%s(%s): Received ping\n", skb->intf->node->name,
                skb->intf->name);
         icmp_out(skb->intf->node, skb->ip_hdr->src_ip, ICMP_ECHO_REPLY_TYPE,
-                 ICMP_ECHO_REQUEST_CODE, NULL, 0);
+                 ICMP_ECHO_REQUEST_CODE, (char *) hdr->rest,
+                 ICMP_HDR_REST_MIN_SIZE);
     } else if (hdr->type == ICMP_ECHO_REPLY_TYPE &&
             hdr->code == ICMP_ECHO_REPLY_CODE) {
         printf("%s(%s): Received pong\n", skb->intf->node->name,

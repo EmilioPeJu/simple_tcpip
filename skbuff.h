@@ -1,5 +1,5 @@
 #ifndef SK_BUFF_H
-#define SK_BUFF
+#define SK_BUFF_H
 #include <assert.h>
 #include <stdlib.h>
 #include <stddef.h>

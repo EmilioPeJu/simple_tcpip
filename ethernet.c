@@ -44,5 +44,10 @@ bool ethernet_output(struct intf *intf, struct mac_addr mac, u16 proto,
     memcpy(hdr->dst_mac.addr, mac.addr, MAC_ADDR_SIZE);
     memcpy(hdr->src_mac.addr, IF_MAC(intf)->addr, MAC_ADDR_SIZE);
     hdr->type = HTONS(proto);
+    if (skb->len < 60) {
+        // there was extra tail room allocated to guarantee ethernet minimum
+        // frame size
+        skb_put(skb, 60 - skb->len);
+    }
     return send_pkt_out(intf, skb);
 }

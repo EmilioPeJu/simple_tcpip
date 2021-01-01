@@ -17,8 +17,8 @@ int main()
     struct intf *eth01 = get_node_if_by_name(node0, "eth01");
     struct intf *eth10 = get_node_if_by_name(node1, "eth10");
     start_recv_thread();
-    int sock0 = udp_create_socket(node0);
-    int sock1 = udp_create_socket(node1);
+    int sock0 = udp_socket(node0);
+    int sock1 = udp_socket(node1);
     if (udp_bind(sock0, *IF_IP(eth01), 1000)) {
         printf("Problem binding\n");
         return 1;

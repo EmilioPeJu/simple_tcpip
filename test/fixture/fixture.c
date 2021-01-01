@@ -4,10 +4,10 @@
 #include "fixture.h"
 #include "graph.h"
 static struct graph *tgraph;
-#define MAX_SAVES_FRAMES (32)
-static char recv_data[MAX_SAVES_FRAMES][RECV_BUFFER_SIZE];
-static size_t recv_len[MAX_SAVES_FRAMES];
-static struct intf *recv_intf[MAX_SAVES_FRAMES];
+#define MAX_SAVED_FRAMES (32)
+static char recv_data[MAX_SAVED_FRAMES][RECV_BUFFER_SIZE];
+static size_t recv_len[MAX_SAVED_FRAMES];
+static struct intf *recv_intf[MAX_SAVED_FRAMES];
 static size_t  recv_n;
 
 char *get_test_recv_data(size_t n)
@@ -39,9 +39,9 @@ size_t get_test_recv_n()
 
 void reset_test_recv()
 {
-    memset(recv_len, 0, MAX_SAVES_FRAMES*sizeof(size_t));
-    memset(recv_intf, 0, MAX_SAVES_FRAMES*sizeof(struct intf *));
-    memset(recv_data, 0, MAX_SAVES_FRAMES*RECV_BUFFER_SIZE);
+    memset(recv_len, 0, MAX_SAVED_FRAMES*sizeof(size_t));
+    memset(recv_intf, 0, MAX_SAVED_FRAMES*sizeof(struct intf *));
+    memset(recv_data, 0, MAX_SAVED_FRAMES*RECV_BUFFER_SIZE);
     recv_n = 0;
 }
 
@@ -52,7 +52,7 @@ static void receive_callback(char *bytes, size_t size, struct intf *intf)
     memcpy(recv_data[recv_n], bytes, size);
     recv_len[recv_n] = size;
     recv_intf[recv_n] = intf;
-    recv_n = (recv_n + 1) % MAX_SAVES_FRAMES;
+    recv_n = (recv_n + 1) % MAX_SAVED_FRAMES;
 }
 
 void wait_test_graph_received(size_t n)

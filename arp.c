@@ -153,8 +153,8 @@ void dump_arp_table(struct arp_table *table)
         u8 *ip = entry->ip.addr;
         u8 *mac = entry->mac.addr;
         struct sk_buff *skb;
-        printf("\tentry ip: %u.%u.%u.%u "
-               "mac: %02x:%02x:%02x:%02x:%02x:%02x intf: %s\n",
+        printf("\tentry ip: %u.%u.%u.%u, "
+               "mac: %02x:%02x:%02x:%02x:%02x:%02x, intf: %s\n",
                ip[0], ip[1], ip[2], ip[3],
                mac[0], mac[1], mac[2], mac[3], mac[4], mac[5],
                entry->intf->name);

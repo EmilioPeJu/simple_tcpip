@@ -8,20 +8,20 @@
 #include "skbuff.h"
 #include "utils.h"
 
-u16 calc_icmp_cksum(struct icmp_hdr *hdr)
+static u16 calc_icmp_cksum(struct icmp_hdr *hdr, size_t size)
 {
     // TODO: don't assume the size
-    return calc_checksum_16((char *) hdr, 8);
+    return calc_checksum_16((char *) hdr, size);
 }
 
-void fill_icmp_cksum(struct icmp_hdr *hdr)
+static void fill_icmp_cksum(struct icmp_hdr *hdr, size_t size)
 {
-    hdr->cksum = HTONS(calc_icmp_cksum(hdr));
+    hdr->cksum = HTONS(calc_icmp_cksum(hdr, size));
 }
 
-bool check_icmp_cksum(struct icmp_hdr *hdr)
+static bool check_icmp_cksum(struct icmp_hdr *hdr, size_t size)
 {
-   return  calc_icmp_cksum(hdr) == 0;
+   return  calc_icmp_cksum(hdr, size) == 0;
 }
 
 bool ping(struct node *node, char *ip_addr)
@@ -43,7 +43,7 @@ bool icmp_out(struct node *node, struct ip_addr ip, u8 type, u8 code,
     hdr->code = code;
     if (size)
         memcpy(hdr->rest, payload, size);
-    fill_icmp_cksum(hdr);
+    fill_icmp_cksum(hdr, skb->len);
     bool result = ip_output(node, ip, IP_PROTO_ICMP, skb);
     if (!result)
         free_skb(skb);
@@ -61,7 +61,7 @@ bool icmp_input(struct sk_buff *skb)
                skb->intf->name);
         icmp_out(skb->intf->node, skb->ip_hdr->src_ip, ICMP_ECHO_REPLY_TYPE,
                  ICMP_ECHO_REQUEST_CODE, (char *) hdr->rest,
-                 ICMP_HDR_REST_MIN_SIZE);
+                 skb->len - ICMP_HDR_SIZE);
     } else if (hdr->type == ICMP_ECHO_REPLY_TYPE &&
             hdr->code == ICMP_ECHO_REPLY_CODE) {
         printf("%s(%s): Received pong\n", skb->intf->node->name,

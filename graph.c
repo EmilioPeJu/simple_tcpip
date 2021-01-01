@@ -3,6 +3,7 @@
 #include <string.h>
 #include <assert.h>
 #include "arp.h"
+#include "comm.h"
 #include "graph.h"
 #include "ip.h"
 
@@ -37,7 +38,10 @@ void destroy_node(struct node *node)
     list_del(&node->list);
     for (size_t i=0; i < MAX_INTFS_PER_NODE; i++) {
         if (node->intfs[i]) {
-            destroy_link(node->intfs[i]->link);
+            if (node->intfs[i]->link)
+                destroy_link(node->intfs[i]->link);
+            else
+                destroy_interface(node->intfs[i]);
         }
     }
     destroy_node_nw_prop(&node->node_nw_prop);
@@ -52,13 +56,22 @@ void insert_link_between_two_nodes(struct node *node1,
 {
     struct link *link = calloc(1, sizeof(struct link));
     link->cost = cost;
-    init_interface(&link->intf1, from_ifname, node1, link);
-    init_interface(&link->intf2, to_ifname, node2, link);
+    init_interface(&link->intf1, from_ifname, node1, link, CT_UDP);
+    init_interface(&link->intf2, to_ifname, node2, link, CT_UDP);
+}
+
+void insert_tuntap_interface(struct node *node, const char *name)
+{
+    struct intf *intf = calloc(1, sizeof(struct intf));
+    init_interface(intf, name, node, NULL, CT_TUNTAP);
 }
 
 void destroy_interface(struct intf *intf)
 {
-    destroy_udp_socket(&intf->comm);
+    enum comm_type ct = intf->comm.comm_type;
+    destroy_comm(&intf->comm);
+    if (ct == CT_TUNTAP)
+        free(intf);
 }
 
 void destroy_link(struct link *link)
@@ -84,21 +97,24 @@ static void dump_intf_nw_prop(struct intf_nw_prop *prop)
 {
     u8 *mac = prop->mac_addr.addr;
     u8 *ip = prop->ip_addr.addr;
-    printf("\tmac: %02x:%02x:%02x:%02x:%02x:%02x, ip: ", mac[0], mac[1],
+    printf("mac: %02x:%02x:%02x:%02x:%02x:%02x, ip: ", mac[0], mac[1],
            mac[2], mac[3], mac[4], mac[5]);
     if (!prop->is_ip_addr_config)
-        printf("Not configured ");
+        printf("Not configured\n");
     else
-        printf("%u.%u.%u.%u/%u ", ip[0], ip[1], ip[2], ip[3], prop->mask);
+        printf("%u.%u.%u.%u/%u\n", ip[0], ip[1], ip[2], ip[3], prop->mask);
+    printf("\t");
     dump_udp_socks_manager(&prop->udp_socks_manager);
+    printf("\t");
 }
 
 static void dump_interface(struct intf *intf)
 {
-    printf("\tInterface: %s, nbr: %s, cost: %u, ",
-           intf->name,
-           get_nbr_node(intf)->name,
-           intf->link->cost);
+    printf("\tInterface: %s, ", intf->name);
+    if (intf->link)
+        printf(" nbr: %s, cost: %u, ",
+               get_nbr_node(intf)->name,
+               intf->link->cost);
     dump_intf_nw_prop(&intf->intf_nw_prop);
 }
 
@@ -125,7 +141,7 @@ void dump_nw_graph(struct graph *graph)
 }
 
 void init_interface(struct intf *intf, const char *name,  struct node *node,
-                    struct link *link)
+                    struct link *link, enum comm_type comm_type)
 {
     strncpy(intf->name, name, MAX_IF_NAME_SIZE);
     intf->node = node;
@@ -135,5 +151,5 @@ void init_interface(struct intf *intf, const char *name,  struct node *node,
     node->intfs[slot] = intf;
     init_intf_nw_prop(&intf->intf_nw_prop);
     interface_assign_mac_address(intf);
-    init_udp_socket(&intf->comm);
+    init_comm(&intf->comm, comm_type);
 }

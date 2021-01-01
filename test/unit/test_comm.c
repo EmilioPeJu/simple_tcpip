@@ -3,6 +3,7 @@
 #include "comm.h"
 #include "graph.h"
 #include "fixture.h"
+#include "utils.h"
 
 static struct graph *tgraph;
 

@@ -8,6 +8,7 @@
 struct ethernet_hdr;
 struct intf;
 struct ip_hdr;
+struct udp_hdr;
 
 struct sk_buff {
     struct list_head list;

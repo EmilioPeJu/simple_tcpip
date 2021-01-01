@@ -25,7 +25,7 @@ struct ip_hdr {
     u16 hcksum;
     struct ip_addr src_ip;
     struct ip_addr dst_ip;
-};
+} __attribute__((packed));
 
 u16 calc_ip_hcksum(struct ip_hdr *hdr);
 

@@ -44,7 +44,8 @@ void test_send_arp_broadcast_request_is_received()
     ip.iaddr = convert_ip_from_str_to_int("192.168.89.2");
     send_arp_broadcast_request(eth01, ip);
     wait_test_graph_received(1);
-    TEST_ASSERT_EQUAL_MESSAGE(42, get_test_recv_len(0),
+    // minimum ethernet frame size
+    TEST_ASSERT_EQUAL_MESSAGE(60, get_test_recv_len(0),
                               "Size doesn't match");
     TEST_ASSERT_MESSAGE(memcmp(TEST_REQUEST, get_test_recv_data(0), 42) == 0,
                         "Packet doesn't match");
@@ -61,7 +62,8 @@ void test_process_arp_broadcast_request_does_reply()
     process_arp_broadcast_request(eth10,
         (struct arp_hdr *) (TEST_REQUEST + ETH_HDR_SIZE));
     wait_test_graph_received(1);
-    TEST_ASSERT_EQUAL_MESSAGE(42, get_test_recv_len(0),
+    // minimum ethernet frame size
+    TEST_ASSERT_EQUAL_MESSAGE(60, get_test_recv_len(0),
                               "Size doesn't match");
     TEST_ASSERT_MESSAGE(memcmp(TEST_REPLY, get_test_recv_data(0), 42) == 0,
                         "Packet doesn't match");

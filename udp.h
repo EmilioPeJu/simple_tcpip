@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include "address.h"
 #include "list.h"
-#define MAX_UPD_SOCKS (8)
+#define MAX_UDP_SOCKS (8)
 #define MAX_UDP_PAYLOAD (1446)
 #define UDP_HDR_SIZE (sizeof(struct udp_hdr))
 
@@ -18,7 +18,7 @@ struct udp_hdr {
 };
 
 struct udp_sock {
-    bool bounded;
+    bool bound;
     struct node *node;
     // struct ip_addr local_ip;
     struct intf *intf;
@@ -41,7 +41,7 @@ bool udp_input(struct sk_buff *skb);
 bool udp_out(struct udp_sock *sock, char *buff, size_t size, struct ip_addr ip,
              u16 port);
 
-int udp_create_socket();
+int udp_socket(struct node *node);
 
 int udp_bind(int sockfd, struct ip_addr ip, u16 port);
 

@@ -67,7 +67,6 @@ void test_ping_pong()
     memcpy(entry1->mac.addr, IF_MAC(eth01)->addr, MAC_ADDR_SIZE);
     entry1->resolved = true;
     arp_table_entry_add(NODE_ARP_TABLE(node1), entry1);
-    dump_nw_graph(tgraph);
     ping(node0, TEST_ETH10_IP_STR);
     wait_test_graph_received(2);
     TEST_ASSERT_EQUAL(2, get_test_recv_n());

@@ -6,7 +6,7 @@
 #include "comm.h"
 #include "list.h"
 #include "net.h"
-#define MAX_IF_NAME_SIZE (32)
+#define MAX_IF_NAME_SIZE (15)
 #define MAX_TOPO_NAME_SIZE (32)
 #define MAX_NODE_NAME_SIZE (32)
 #define MAX_INTFS_PER_NODE (4)
@@ -54,6 +54,8 @@ void insert_link_between_two_nodes(struct node *node1,
                                    const char *from_ifname,
                                    const char *to_ifname,
                                    uint32_t cost);
+
+void insert_tuntap_interface(struct node *node, const char *name);
 
 void destroy_link(struct link *link);
 
@@ -106,6 +108,6 @@ static inline struct node *get_node_by_node_name(struct graph *graph,
 }
 
 void init_interface(struct intf *intf, const char *name, struct node *node,
-                    struct link *link);
+                    struct link *link, enum comm_type comm_type);
 
 #endif

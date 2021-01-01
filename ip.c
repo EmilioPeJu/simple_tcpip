@@ -144,7 +144,8 @@ void dump_rt_table(struct rt_table *table)
     printf("RT Table\n");
     struct rt_entry *entry;
     RT_TABLE_FOREACH(entry, table) {
-        printf("\tdst: %u.%u.%u.%u/%u next: %u.%u.%u.%u intf: %s\n",
+        // if next is 0, it means it's a local network
+        printf("\tdst: %u.%u.%u.%u/%u, next: %u.%u.%u.%u, intf: %s\n",
             entry->dst.addr[0], entry->dst.addr[1], entry->dst.addr[2],
             entry->dst.addr[3], entry->mask, entry->next.addr[0],
             entry->next.addr[1], entry->next.addr[2], entry->next.addr[3],
@@ -167,7 +168,7 @@ void init_ip_hdr(struct ip_hdr *hdr)
 {
     memset(hdr, 0, sizeof(struct ip_hdr));
     hdr->ver = 4;
-    hdr->hlen = 4;
+    hdr->hlen = 5;
     hdr->ttl = 64;
 }
 

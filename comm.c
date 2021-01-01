@@ -4,19 +4,16 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
-#include <arpa/inet.h>
 #include <sys/epoll.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include <unistd.h>
 #include "comm.h"
+#include "comm_udp.h"
+#include "comm_tuntap.h"
 #include "ethernet.h"
 #include "graph.h"
 #include "skbuff.h"
 #include "switch.h"
 #include "utils.h"
-#define MAX_COMMS (1024)
 #define MAX_EVENTS (10)
 
 static data_callback receive_callback;
@@ -25,44 +22,59 @@ static bool want_quit_recv_task;
 static pthread_t recv_thread;
 static bool thread_started = false;
 
-static struct comm *sockfd_to_comm[MAX_COMMS];
+static struct comm *fd_to_comm_map[MAX_COMMS];
 
-static uint16_t next_udp_port = 40000;
-
-static uint16_t get_next_udp_port()
+bool set_fd_comm(int fd, struct comm *comm)
 {
-    return next_udp_port++;
+    if (fd < 0 || fd >= MAX_COMMS)
+        return false;
+    fd_to_comm_map[fd] = comm;
+    return true;
+}
+
+struct comm *fd_to_comm(int fd)
+{
+    if (fd < 0 || fd >= MAX_COMMS)
+        return NULL;
+    return fd_to_comm_map[fd];
+}
+
+bool init_comm(struct comm *comm, enum comm_type comm_type)
+{
+    comm->comm_type = comm_type;
+    switch (comm->comm_type) {
+        case CT_UDP:
+            comm->ops = &udp_comm_ops;
+            break;
+        case CT_TUNTAP:
+            comm->ops = &tuntap_comm_ops;
+            break;
+        default:
+            printf("Comm type not supported");
+            exit(EXIT_FAILURE);
+    }
+    return comm->ops->init_comm(comm);
+}
+
+bool destroy_comm(struct comm *comm)
+{
+    return comm->ops->destroy_comm(comm);
 }
 
 bool send_pkt_out(struct intf *intf, struct sk_buff *skb)
 {
-    bool result = send_bytes_out((char *) skb->data, skb->len, intf);
-    if (result)
+    ssize_t result = send_bytes_out((char *) skb->data, skb->len, intf);
+    bool ok = result >= 0;
+    if (ok)
         free_skb(skb);
-    return result;
+    return ok;
 }
 
-bool send_bytes_out(char *bytes, size_t size, struct intf *intf)
+ssize_t send_bytes_out(char *bytes, size_t size, struct intf *intf)
 {
     if (send_callback)
         send_callback(bytes, size, intf);
-    struct intf *nbr_intf = get_nbr_if(intf);
-    if (!nbr_intf || !nbr_intf->comm.port || !intf->comm.sock) {
-        printf("Socket  not available\n");
-        return false;
-    }
-    struct sockaddr_in addr;
-    memset(&addr, 0, sizeof(addr));
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(nbr_intf->comm.port);
-    addr.sin_addr.s_addr = inet_addr("127.0.0.1");
-    ssize_t nsent = sendto(intf->comm.sock, bytes, size, MSG_DONTWAIT,
-                           (struct sockaddr *) &addr, sizeof(addr));
-    if (nsent < 0) {
-        printf("Error while sending\n");
-        return false;
-    }
-    return true;
+    return intf->comm.ops->send_bytes(&intf->comm, bytes, size);
 }
 
 bool pkt_receive(struct sk_buff *skb)
@@ -79,7 +91,10 @@ bool pkt_receive(struct sk_buff *skb)
 bool send_pkt_flood(struct node *node, struct intf *exempted_intf,
                     struct sk_buff *skb)
 {
-    return send_bytes_flood(node, exempted_intf, (char *) skb->data, skb->len);
+    bool ok = send_bytes_flood(node, exempted_intf, (char *) skb->data, skb->len);
+    if(ok)
+        free_skb(skb);
+    return ok;
 }
 
 bool send_bytes_flood(struct node *node, struct intf *exempted_intf, char *bytes,
@@ -88,7 +103,7 @@ bool send_bytes_flood(struct node *node, struct intf *exempted_intf, char *bytes
     bool rc = false;
     for (size_t i=0; i < MAX_INTFS_PER_NODE; i++) {
         if (node->intfs[i] && node->intfs[i] != exempted_intf) {
-            rc |= send_bytes_out(bytes, size, node->intfs[i]);
+            rc |= send_bytes_out(bytes, size, node->intfs[i]) < 0;
         }
     }
     return rc;
@@ -103,7 +118,7 @@ static void *recv_task(void *data)
         exit(EXIT_FAILURE);
     }
     for (size_t i=0; i < MAX_COMMS; i++) {
-        if (sockfd_to_comm[i]) {
+        if (fd_to_comm_map[i]) {
             ev.events = EPOLLIN;
             ev.data.fd = i;
             if (epoll_ctl(epollfd, EPOLL_CTL_ADD, i, &ev) == -1) {
@@ -116,33 +131,28 @@ static void *recv_task(void *data)
         int nfds = epoll_wait(epollfd, events, MAX_EVENTS, 1000);
         if (nfds < 0) {
             printf("epoll_wait error\n");
+            continue;
         }
         for (size_t i=0; i < nfds; i++) {
             int fd = events[i].data.fd;
-            struct sockaddr_in addr;
-            socklen_t addr_len;
-            if (sockfd_to_comm[fd]) {
+            struct comm *comm;
+            if ((comm=fd_to_comm_map[fd]) != NULL) {
+                struct intf *intf = COMM_INTF(comm);
                 struct sk_buff *skb = alloc_skb(RECV_BUFFER_SIZE);
                 skb_reserve(skb, RECV_RESERVED_HEAD_ROOM);
-                ssize_t nrecv = recvfrom(fd, skb->data, skb_tailroom(skb),
-                    MSG_DONTWAIT, (struct sockaddr *) &addr, &addr_len);
-                if (nrecv < 0) {
-                    printf("recvfrom error: %ld\n", nrecv);
+                skb->intf = intf;
+                ssize_t nrecv = intf->comm.ops->recv_bytes(comm,
+                                                           (char *) skb->data,
+                                                           skb_tailroom(skb));
+                if (nrecv <= 0) {
+                    printf("Error %ld while receiving\n", nrecv);
                     free_skb(skb);
-                } else {
-                    skb_put(skb, nrecv);
-                    struct intf *intf = COMM_INTF(sockfd_to_comm[fd]);
-                    skb->intf = intf;
-                    printf("Packet received from %s:%hu",
-                           inet_ntoa(addr.sin_addr), htons(addr.sin_port));
-                    printf(", node %s, interface %s received %lu bytes: \n",
-                           intf->node->name, intf->name, skb->len);
-                    dump_hex((char *) skb->data, skb->len);
-                    printf("\n");
-                    if(!pkt_receive(skb)) {
-                        printf("Packet dropped\n");
-                        free(skb);
-                    }
+                    continue;
+                }
+                skb_put(skb, nrecv);
+                if(!pkt_receive(skb)) {
+                    printf("Packet dropped\n");
+                    free_skb(skb);
                 }
             }
         }
@@ -170,32 +180,6 @@ void stop_recv_thread()
         if (!pthread_join(recv_thread, NULL)) {
             thread_started = false;
         }
-    }
-}
-
-void init_udp_socket(struct comm *comm)
-{
-    struct sockaddr_in addr;
-    comm->sock = socket(AF_INET, SOCK_DGRAM, 0);
-    memset(&addr, 0, sizeof(addr));
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = INADDR_ANY;
-    while (true) {
-        comm->port = get_next_udp_port();
-        addr.sin_port = htons(comm->port);
-        if (!bind(comm->sock, (struct sockaddr *) &addr, sizeof(addr)))
-            break;
-    }
-    sockfd_to_comm[comm->sock] = comm;
-}
-
-void destroy_udp_socket(struct comm *comm)
-{
-    if (comm->sock) {
-        close(comm->sock);
-        sockfd_to_comm[comm->sock] = 0;
-        comm-> port = 0;
-        comm->sock = 0;
     }
 }
 

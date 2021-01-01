@@ -70,6 +70,8 @@ u16 calc_checksum_16(char *buff, size_t size)
     for (size_t i=0; i < size/2; i++) {
         result += NTOHS(ptr[i]);
     }
+    if (size & 1)
+        result += (*(unsigned char *) (buff + size - 1))<<8;
     result = (result & 0xffff) + (result >> 16);
     result = (result & 0xffff) + (result >> 16);
     return (~result) & 0xffff;

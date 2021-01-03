@@ -1,6 +1,7 @@
 project('simple_tcpip', 'c')
 inc = include_directories(['.'])
-graph_sources = ['udp.c',
+graph_sources = ['tcp.c',
+                 'udp.c',
                  'icmp.c',
                  'ip.c',
                  'arp.c',

@@ -5,6 +5,7 @@
 #include "ip.h"
 #include "graph.h"
 #include "skbuff.h"
+#include "tcp.h"
 #include "udp.h"
 #include "utils.h"
 
@@ -18,6 +19,10 @@ bool ip_input(struct sk_buff *skb)
     case IP_PROTO_ICMP:
         skb_pull(skb, IP_HDR_SIZE);
         return icmp_input(skb);
+    case IP_PROTO_TCP:
+        skb_pull(skb, IP_HDR_SIZE);
+        skb->tcp_hdr = (struct tcp_hdr *) skb->data;
+        return tcp_input(skb);
     case IP_PROTO_UDP:
         skb_pull(skb, IP_HDR_SIZE);
         skb->udp_hdr = (struct udp_hdr *) skb->data;

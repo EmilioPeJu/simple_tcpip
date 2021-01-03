@@ -1,4 +1,5 @@
-tests = ['comm', 'graph', 'net', 'utils', 'ethernet', 'arp', 'ip', 'icmp']
+tests = ['comm', 'graph', 'net', 'utils', 'ethernet', 'arp', 'ip', 'icmp',
+         'udp', 'tcp']
 unity_dep = dependency('libunity')
 tests_deps = [unity_dep, fixture_dep]
 tests_deps += inproject_deps

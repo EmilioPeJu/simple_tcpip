@@ -3,8 +3,13 @@
 #include <stdint.h>
 #include "address.h"
 
-#define HTONS(n) ((n>>8) + ((n & 0xff) <<8))
+#define HTONS(n) (((n)>>8) + (((n) & 0xff) <<8))
 #define NTOHS(n) HTONS(n)
+#define HTONL(n) (((n)>>24)                   \
+                  + (((n)>>8) & 0x0000ff00)  \
+                  + (((n)<<8) &  0x00ff0000)  \
+                  + (((n)<<24) & 0xff000000))
+#define NTOHL(n) HTONL(n)
 
 void apply_mask(char *prefix, char mask, char *str_prefix);
 

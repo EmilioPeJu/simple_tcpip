@@ -106,6 +106,7 @@ static void dump_intf_nw_prop(struct intf_nw_prop *prop)
     printf("\t");
     dump_udp_socks_manager(&prop->udp_socks_manager);
     printf("\t");
+    dump_tcp_socks_manager(&prop->tcp_socks_manager);
 }
 
 static void dump_interface(struct intf *intf)

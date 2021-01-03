@@ -100,6 +100,7 @@ void init_intf_nw_prop(struct intf_nw_prop *props)
 {
     memset(props, 0, sizeof(*props));
     init_udp_socks_manager(&props->udp_socks_manager);
+    init_tcp_socks_manager(&props->tcp_socks_manager);
 }
 
 void init_node_nw_prop(struct node_nw_prop *props)

@@ -10,7 +10,6 @@
 
 static u16 calc_icmp_cksum(struct icmp_hdr *hdr, size_t size)
 {
-    // TODO: don't assume the size
     return calc_checksum_16((char *) hdr, size);
 }
 
